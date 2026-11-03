@@ -9,7 +9,7 @@
 terms at a time and rescales every comparison, so separate comparisons cannot be read against each other.
 trendscale chains them through an anchor term and puts all your terms on one scale. It also reads interest by
 region, related queries, what is trending now, and topic ids. A maintained replacement for pytrends (archived
-since 2024), with a drop-in `TrendReq`.
+on GitHub, last release in April 2023), with a drop-in `TrendReq`.
 
 ```python
 from trendscale import Trends
@@ -102,6 +102,8 @@ pytrends.suggestions("python")
 Differences from pytrends: `interest_over_time()` takes any number of terms; times are in UTC, so `tz` is accepted
 and ignored; `interest_by_region()` stays at five terms (Google compares regions only within one comparison);
 `related_topics()`, `categories()` and the old daily and realtime trending calls are not available.
+The [migration guide](https://famed-bonobo.github.io/trendscale/migrating-from-pytrends) lists every pytrends call,
+what still works in pytrends today, and how errors map.
 
 ### Trending now and topics
 
