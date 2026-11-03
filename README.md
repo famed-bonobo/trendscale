@@ -1,7 +1,6 @@
 # trendscale
 
-[![PyPI](https://img.shields.io/pypi/v/trendscale)](https://pypi.org/project/trendscale/)
-[![Python](https://img.shields.io/pypi/pyversions/trendscale)](https://pypi.org/project/trendscale/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
 [![Tests](https://github.com/famed-bonobo/trendscale/actions/workflows/tests.yml/badge.svg)](https://github.com/famed-bonobo/trendscale/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -41,7 +40,8 @@ Seven terms, one chart, 2.9 seconds. The average of the last four weeks in the U
 ## Install
 
 ```bash
-pip install trendscale            # pip install "trendscale[pandas]" for the pytrends-compatible module
+pip install "git+https://github.com/famed-bonobo/trendscale"
+pip install "trendscale[pandas] @ git+https://github.com/famed-bonobo/trendscale"   # with the pytrends-compatible module
 ```
 
 Python 3.11 or newer. The only dependency is [httpx](https://www.python-httpx.org/).
@@ -149,7 +149,7 @@ first, longer if the block persists. A call gives up with `TrendsBlockedError` a
 large or scheduled jobs, pass a rotating proxy:
 
 ```python
-Trends(proxy="http://user:password@proxy.example.com:8000")   # socks5:// needs: pip install "trendscale[socks]"
+Trends(proxy="http://user:password@proxy.example.com:8000")   # socks5:// needs the "socks" extra: pip install "trendscale[socks] @ git+https://github.com/famed-bonobo/trendscale"
 ```
 
 ## Running it at scale
