@@ -5,8 +5,8 @@ description: What still works in pytrends, what Google broke, and how to move a 
 
 # Migrating from pytrends to trendscale
 
-[pytrends](https://github.com/GeneralMills/pytrends) is archived on GitHub and its last release, 4.9.2, is from April
-2023. This page says what still works in it, what does not, and how to move a pytrends script to
+[pytrends](https://github.com/GeneralMills/pytrends) is archived on GitHub and its last release, 4.9.2, is from
+April 2023. This page says what still works in it, what does not, and how to move a pytrends script to
 [trendscale](https://github.com/famed-bonobo/trendscale) by changing one import.
 
 ## What still works in pytrends
