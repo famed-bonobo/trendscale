@@ -95,7 +95,12 @@ def _parser() -> argparse.ArgumentParser:
     compare.add_argument('--anchor', help='the term that links comparisons past five; the first term by default')
     trending = commands.add_parser('trending', help='what people search right now in a country')
     trending.add_argument('geo', nargs='?', default='US')
-    trending.add_argument('--hours', type=int, default=constants.DEFAULT_TRENDING_HOURS)
+    trending.add_argument(
+        '--hours',
+        type=int,
+        default=constants.DEFAULT_TRENDING_HOURS,
+        help=f'how far back a trend may have started; Google lists at most the last {constants.MAX_LISTED_TRENDING_HOURS}',
+    )
     trending.add_argument('--limit', type=int)
     suggest = commands.add_parser('suggest', help='Google topics and their ids for a text')
     suggest.add_argument('text')

@@ -117,6 +117,10 @@ trends.suggestions("python")
 trends.explore(["/m/05z1_"])             # the topic, whatever words people use for it
 ```
 
+`hours` is how far back a trend may have started, 24 by default. Google lists the trends of the last 4, 24, 48 or 168
+hours; any other number is answered from the shortest of those periods that covers it, keeping the trends that started
+within your hours. Google lists at most 168 hours: larger values, up to 191, are still accepted and read as 168.
+
 Google shows news articles next to each trend on its page, but since October 2026 it serves them only behind a
 reCAPTCHA check, so trendscale does not return them.
 
@@ -166,9 +170,9 @@ exports to CSV, Excel or Google Sheets.
 
 trends.google.com loads each chart from internal endpoints: an explore call returns one widget per chart with a
 token, and each chart's data is fetched with that token. trendscale sends the same calls the page sends, and the
-trending list comes from the page's own `batchexecute` call. No browser is involved. The calls were checked against
-live answers in October 2026. When Google changes them, the live tests (`pytest -m live`, run every Monday on GitHub)
-show which part broke.
+trending list is read from the data the Trending now page embeds in its HTML. No browser is involved. The calls were
+checked against live answers in October 2026 and the trending list in November 2026. When Google changes them, the
+live tests (`pytest -m live`, run every Monday on GitHub) show which part broke.
 
 ## FAQ
 

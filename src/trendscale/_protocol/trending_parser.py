@@ -1,6 +1,6 @@
-"""Reads Google Trends' "Trending now" answer (a batchexecute call) into plain records.
+"""Reads the list of trends that Google Trends' "Trending now" page embeds into plain records.
 
-The answer is a list of trends, each a positional array (layout checked against live answers on 2026-10-17):
+The list holds one positional array per trend (layout checked against live answers on 2026-10-17 and 2026-11-12):
 0 search text, 1 news articles or null, 2 region, 3 [start time], 4 [end time] or null while it still trends,
 6 searches in the period as a lower bound (1000 means "1K+"), 8 growth in percent, 9 related searches,
 10 category ids, 11 news tokens, 12 normalized text.
@@ -9,6 +9,7 @@ The answer is a list of trends, each a positional array (layout checked against 
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlencode
@@ -41,28 +42,34 @@ TREND_CATEGORIES = {
 HOURS_PER_DAY = 24
 THOUSAND = 1_000
 MILLION = 1_000_000
-BATCH_ENTRY_MARKER = 'wrb.fr'
+# The page names its data requests as 'ds:N' : {id:'\/Service.Method', ...} and fills each from a script block.
+DATA_REQUEST = r"'(ds:\d+)'\s*:\s*\{{id:'\\?/{service}'"
+DATA_BLOCK = r"AF_initDataCallback\(\{{key: '{key}', hash: '\d+', data:(.*?), sideChannel: \{{"
 
 
-def batch_payload(text: str, rpc_id: str) -> Any:
-    """The JSON payload an RPC of a batchexecute answer returns (the answer is a guard line, a blank line and one JSON line)."""
-    if not text.startswith(config.RESPONSE_GUARD):
-        raise UnreadableAnswerError(f'The batch answer does not start with {config.RESPONSE_GUARD!r}: {text[:80]!r}')
-    for line in text.splitlines():
-        if not line.startswith('[['):
-            continue
-        for entry in json.loads(line):
-            if entry[0] == BATCH_ENTRY_MARKER and entry[1] == rpc_id:
-                if entry[2] is None:
-                    raise UnreadableAnswerError(f'Google answered {rpc_id} without data: {line[:120]!r}')
-                return json.loads(entry[2])
-    raise UnreadableAnswerError(f'The batch answer has no {rpc_id} entry: {text[:120]!r}')
-
-
-def parse_trending(payload: Any, geo: str) -> list[dict[str, Any]]:
-    """The trends of one region, in Google's order (by search volume), each with its rank."""
+def embedded_payload(html: str) -> Any:
+    """The list of trends inside the page: the data of its FeTrendingService.ListTrends request."""
+    request = re.search(DATA_REQUEST.format(service=re.escape(config.TRENDING_SERVICE)), html)
+    if not request:
+        raise UnreadableAnswerError(f'The page names no {config.TRENDING_SERVICE} request: {html[:80]!r}')
+    key = request.group(1)
+    block = re.search(DATA_BLOCK.format(key=key), html, re.DOTALL)
+    if not block:
+        raise UnreadableAnswerError(f'The page holds no data for its {config.TRENDING_SERVICE} request ({key})')
     try:
-        return [_trend(rank, item, geo) for rank, item in enumerate(payload[1], start=1)]
+        return json.loads(block.group(1))
+    except ValueError as error:
+        raise UnreadableAnswerError(f'The data of {key} is not JSON: {block.group(1)[:80]!r}') from error
+
+
+def parse_trending(payload: Any, geo: str, earliest_start: datetime | None = None) -> list[dict[str, Any]]:
+    """The trends of one region, in Google's order (by search volume), each with its rank.
+
+    With `earliest_start`, only the trends that started at that time or later are kept and ranked.
+    """
+    try:
+        items = [item for item in payload[1] if earliest_start is None or item[3][0] >= earliest_start.timestamp()]
+        return [_trend(rank, item, geo) for rank, item in enumerate(items, start=1)]
     except (IndexError, TypeError, KeyError) as error:
         raise UnreadableAnswerError(f'Trending now for {geo} has an unexpected layout: {str(payload)[:160]!r}') from error
 

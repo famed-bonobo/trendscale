@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import pytest
 
 from trendscale import NoDataError, TrendsBlockedError, plans
 from trendscale._protocol.explore_parser import strip_guard
+from trendscale._protocol.trending_parser import embedded_payload
 from trendscale.options import make_search
 from trendscale.runner import run_async, run_sync
 
@@ -47,6 +48,24 @@ class FakeTransport:
 class AsyncFakeTransport(FakeTransport):
     async def get_json(self, url: str, params: dict[str, str]) -> Any:  # type: ignore[override]
         return FakeTransport.get_json(self, url, params)
+
+
+class TrendingTransport:
+    """Answers every trending call with one list of trends and keeps the region and hours each call asked for."""
+
+    def __init__(self, payload: Any) -> None:
+        self.payload = payload
+        self.asked: list[tuple[str, int]] = []
+
+    def trending(self, geo: str, hours: int) -> Any:
+        self.asked.append((geo, hours))
+        return self.payload
+
+
+def trend_started(query: str, hours_ago: int) -> list[Any]:
+    """One trend of the list as Google lays it out, started that many hours before now."""
+    started = int((datetime.now(UTC) - timedelta(hours=hours_ago)).timestamp())
+    return [query, None, 'BR', [started], None, None, 500, None, 100, [query], [11], [], query]
 
 
 def recorded(fixture_text: Any) -> FakeTransport:
@@ -134,6 +153,33 @@ def test_a_blocked_chart_fails_the_search() -> None:
     search = make_search(('python',), '', 'past_12_months', 0, 'web', TODAY)
     with pytest.raises(TrendsBlockedError):
         run_sync(plans.explore(search, OPTIONS, 'en-US'), transport)  # type: ignore[arg-type]
+
+
+def test_trending_now_ranks_the_listed_trends_and_tells_their_period(fixture_text: Any) -> None:
+    transport = TrendingTransport(embedded_payload(fixture_text('trending_page_us')))
+    rows = run_sync(plans.trending_now('US', 24, 3), transport)  # type: ignore[arg-type]
+    assert transport.asked == [('US', 24)]
+    assert [(row['rank'], row['query']) for row in rows] == [
+        (1, 'microsoft outage'),
+        (2, 'italy vs france'),
+        (3, 'czechia vs spain'),
+    ]
+    assert rows[0]['hours'] == 24 and rows[0]['scrapedAt']
+    assert rows[0]['trendsUrl'] == 'https://trends.google.com/trends/explore?q=microsoft+outage&date=now+1-d&geo=US'
+
+
+def test_trending_now_keeps_the_trends_that_started_within_hours_between_two_periods() -> None:
+    transport = TrendingTransport([None, [trend_started('older', 10), trend_started('newer', 1)]])
+    rows = run_sync(plans.trending_now('BR', 6, None), transport)  # type: ignore[arg-type]
+    assert [(row['rank'], row['query'], row['hours']) for row in rows] == [(1, 'newer', 6)]
+
+
+def test_trending_now_reads_more_hours_than_google_lists_as_its_longest_period() -> None:
+    transport = TrendingTransport([None, [trend_started('older', 150), trend_started('newer', 1)]])
+    rows = run_sync(plans.trending_now('BR', 191, None), transport)  # type: ignore[arg-type]
+    assert transport.asked == [('BR', 168)]
+    assert [row['query'] for row in rows] == ['older', 'newer']
+    assert rows[0]['hours'] == 168 and rows[0]['trendsUrl'].endswith('date=now+7-d&geo=BR')
 
 
 async def _run(runner: str, plan: plans.Plan[Any], transport: FakeTransport) -> Any:

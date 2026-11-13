@@ -1,27 +1,28 @@
-"""Builds the form of the batchexecute call that returns the "Trending now" list."""
+"""Builds the request for Google Trends' "Trending now" page and tells which of its trends fall in the hours asked for.
+
+The page lists the trends that started within one of four periods. Any other number of hours is served from the
+shortest period that covers it, keeping the trends that started within those hours.
+"""
 
 from __future__ import annotations
 
-import json
+from datetime import datetime, timedelta
 
 from . import constants as config
 
-COMPACT_SEPARATORS = (',', ':')
-NO_NEWS = 0
+
+def page_period_hours(hours: int) -> int:
+    """The shortest period the page offers that covers the hours asked for, or its longest when none does."""
+    periods = config.TRENDING_PAGE_PERIODS_HOURS
+    return next((period for period in periods if period >= hours), periods[-1])
 
 
-def trending_form(geo: str, hours: int, language: str) -> dict[str, str]:
-    """The form body of the trending-now RPC: region, language (two letters) and hours.
-
-    The fourth argument asked for news articles. Since late October 2026 Google answers any value but 0 with status 3
-    and serves the news only through a separate call that needs a reCAPTCHA token, so none are asked for.
-    """
-    arguments = [None, None, geo, NO_NEWS, language[:2], hours, config.TRENDING_WITH_NEWS_FLAG]
-    envelope = [
-        [[config.TRENDING_NOW_RPC, json.dumps(arguments, separators=COMPACT_SEPARATORS, ensure_ascii=False), None, 'generic']]
-    ]
-    return {'f.req': json.dumps(envelope, separators=COMPACT_SEPARATORS, ensure_ascii=False)}
+def trending_page_parameters(geo: str, hours: int, language: str) -> dict[str, str]:
+    return {'geo': geo, 'hl': language, 'hours': str(page_period_hours(hours))}
 
 
-def trending_parameters(language: str) -> dict[str, str]:
-    return {'hl': language}
+def earliest_start(hours: int, now: datetime) -> datetime | None:
+    """The time a trend must have started by to count, or None when the page's own period already is the answer."""
+    if hours >= page_period_hours(hours):
+        return None
+    return now - timedelta(hours=hours)

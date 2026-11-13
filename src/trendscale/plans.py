@@ -18,6 +18,7 @@ from ._protocol import constants
 from ._protocol.explore_parser import parse_regions, parse_related_queries, parse_suggestions, parse_timeline
 from ._protocol.explore_request import ExploreWidgets, explore_parameters, read_widgets, widget_parameters, widget_url
 from ._protocol.trending_parser import explore_url, parse_trending
+from ._protocol.trending_request import earliest_start
 from .errors import NoDataError, RequestRejectedError
 from .options import Search
 from .records import Comparison, term_records
@@ -66,11 +67,15 @@ def explore(search: Search, options: ExploreOptions, language: str) -> Plan[list
 
 
 def trending_now(geo: str, hours: int, limit: int | None) -> Plan[list[dict[str, Any]]]:
-    """What people search for right now in one country, in Google's order."""
-    rows = parse_trending((yield TrendingCall(geo, hours)), geo)[:limit]
-    scraped_at = datetime.now(UTC).isoformat(timespec='seconds')
+    """What people search for right now in one country, in Google's order: the trends that started in the last `hours`."""
+    # Google lists nothing older than its longest period, so more hours are read as that period and the records say so.
+    listed_hours = min(hours, constants.MAX_LISTED_TRENDING_HOURS)
+    payload = yield TrendingCall(geo, listed_hours)
+    now = datetime.now(UTC)
+    rows = parse_trending(payload, geo, earliest_start(listed_hours, now))[:limit]
+    scraped_at = now.isoformat(timespec='seconds')
     for row in rows:
-        row.update(hours=hours, trendsUrl=explore_url(row['query'], geo, hours), scrapedAt=scraped_at)
+        row.update(hours=listed_hours, trendsUrl=explore_url(row['query'], geo, listed_hours), scrapedAt=scraped_at)
     return rows
 
 

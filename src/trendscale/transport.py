@@ -18,8 +18,8 @@ import httpx
 from ._protocol import constants
 from ._protocol.explore_parser import strip_guard
 from ._protocol.ip_pace import IpPace, PaceLimits
-from ._protocol.trending_parser import batch_payload
-from ._protocol.trending_request import trending_form, trending_parameters
+from ._protocol.trending_parser import embedded_payload
+from ._protocol.trending_request import trending_page_parameters
 from .errors import RequestRejectedError, TrendsBlockedError, UnreadableAnswerError
 
 T = TypeVar('T')
@@ -93,12 +93,9 @@ class SyncTransport:
         return self._call('GET', url, strip_guard, params=params)
 
     def trending(self, geo: str, hours: int) -> Any:
+        """The list of trends of one region, from the page period that covers the hours asked for."""
         return self._call(
-            'POST',
-            constants.BATCH_URL,
-            lambda text: batch_payload(text, constants.TRENDING_NOW_RPC),
-            params=trending_parameters(self._language),
-            data=trending_form(geo, hours, self._language),
+            'GET', constants.TRENDING_PAGE_URL, embedded_payload, params=trending_page_parameters(geo, hours, self._language)
         )
 
     def _call(self, method: str, url: str, read: Reader, **request: Any) -> Any:
@@ -143,12 +140,9 @@ class AsyncTransport:
         return await self._call('GET', url, strip_guard, params=params)
 
     async def trending(self, geo: str, hours: int) -> Any:
+        """The list of trends of one region, from the page period that covers the hours asked for."""
         return await self._call(
-            'POST',
-            constants.BATCH_URL,
-            lambda text: batch_payload(text, constants.TRENDING_NOW_RPC),
-            params=trending_parameters(self._language),
-            data=trending_form(geo, hours, self._language),
+            'GET', constants.TRENDING_PAGE_URL, embedded_payload, params=trending_page_parameters(geo, hours, self._language)
         )
 
     async def _call(self, method: str, url: str, read: Reader, **request: Any) -> Any:

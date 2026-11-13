@@ -10,7 +10,7 @@ EXPLORE_URL = f'{ORIGIN}/trends/api/explore'
 WIDGET_DATA_URL = f'{ORIGIN}/trends/api/widgetdata'
 AUTOCOMPLETE_URL = f'{ORIGIN}/trends/api/autocomplete'
 GEO_PICKER_URL = f'{ORIGIN}/trends/api/explore/pickers/geo'
-BATCH_URL = f'{ORIGIN}/_/TrendsUi/data/batchexecute'
+TRENDING_PAGE_URL = f'{ORIGIN}/trending'
 # Every answer of the /trends/api endpoints starts with this guard line, which is not JSON.
 RESPONSE_GUARD = ")]}'"
 
@@ -24,9 +24,11 @@ WIDGET_ENDPOINTS = {
     RELATED_QUERIES_WIDGET: 'relatedsearches',
 }
 
-# Batch calls (the "Trending now" page): the RPC ids Google's page sends.
-TRENDING_NOW_RPC = 'i0OFE'
-TRENDING_WITH_NEWS_FLAG = 1
+# The "Trending now" page embeds its list as the data of this service request. The batch RPC that returned the list
+# before (i0OFE) answers status 7, permission denied, from every IP since November 2026 (seen 2026-11-12).
+TRENDING_SERVICE = 'FeTrendingService.ListTrends'
+# Periods the page offers, in hours; with any other value of its "hours" parameter it shows the last 24.
+TRENDING_PAGE_PERIODS_HOURS = (4, 24, 48, 168)
 
 # A comparison holds at most this many terms on one 0-100 scale.
 MAX_TERMS_PER_COMPARISON = 5
@@ -73,9 +75,11 @@ TIME_RANGE_PRESETS = {
 }
 DEFAULT_TIME_RANGE = 'past_12_months'
 REGION_RESOLUTIONS = ('auto', 'country', 'region', 'city', 'dma')
-# Google lists trends of the last 1 to 191 hours.
+# Google used to list trends of the last 1 to 191 hours and now lists at most 168. A longer period is still accepted,
+# so calls that worked before keep working, and is read as the 168 hours there are.
 MIN_TRENDING_HOURS = 1
 MAX_TRENDING_HOURS = 191
+MAX_LISTED_TRENDING_HOURS = TRENDING_PAGE_PERIODS_HOURS[-1]
 DEFAULT_TRENDING_HOURS = 24
 MAX_TERMS = 2000
 MAX_TERM_LENGTH = 100

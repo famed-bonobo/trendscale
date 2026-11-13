@@ -158,7 +158,10 @@ class Trends:
     def trending_now(
         self, geo: str = 'US', *, hours: int = constants.DEFAULT_TRENDING_HOURS, limit: int | None = None
     ) -> list[TrendsRecord]:
-        """What people search for right now, with volume, growth, categories and related searches."""
+        """What people search for right now, with volume, growth, categories and related searches.
+
+        `hours` is how far back a trend may have started, from 1 to 191. Google lists at most the last 168 hours, so a
+        larger value is read as 168."""
         return run_sync(self._planner.trending_now(geo, hours, limit), self._transport)
 
     def suggestions(self, text: str) -> list[TrendsRecord]:
